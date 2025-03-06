@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciador de Servidor Minecraft{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Gerenciador de Servidor Minecraft</h1>
+
+    <div class="server-status">
+        {% if server_status.status == "running" %}
+            <span class="server-running"><i class="fas fa-circle-check me-2"></i>Servidor em execução</span>
+            <div class="mt-1">
+                {% if server_status.cpu %}
+                    <small>CPU: {{ server_status.cpu }}</small><br>
+                {% endif %}
+                {% if server_status.memory %}
+                    <small>Memória: {{ server_status.memory }}</small>
+                {% endif %}
+            </div>
+            <form action="{{ url_for('main.restart_server') }}" method="post" class="mt-2">
+                <button type="submit" class="btn btn-sm btn-warning">
+                    <i class="fas fa-rotate me-1"></i>Reiniciar Servidor
+                </button>
+            </form>
+        {% elif server_status.status == "stopped" %}
+            <span class="server-stopped"><i class="fas fa-circle-xmark me-2"></i>Servidor parado</span>
+        {% else %}
+            <span class="server-error"><i class="fas fa-triangle-exclamation me-2"></i>Erro ao verificar status</span>
+            {% if server_status.message %}
+                <div class="mt-1">
+                    <small>{{ server_status.message }}</small>
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<h3>Mundos disponíveis</h3>
+
+{% if worlds %}
+    <div class="row row-cols-1 row-cols-md-3 g-4">
+        {% for world in worlds %}
+            <div class="col">
+                <div class="card world-card {% if world.is_active %}active-world{% endif %}">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">{{ world.name }}</h5>
+                        {% if world.is_active %}
+                            <span class="badge bg-success">Ativo</span>
+                        {% endif %}
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <p class="mb-1"><i class="fas fa-cubes me-2"></i><strong>Modo:</strong> {{ world.game_mode }}</p>
+                            <p class="mb-1"><i class="fas fa-code-branch me-2"></i><strong>Versão:</strong> {{ world.version }}</p>
+                            <p class="mb-1"><i class="fas fa-clock me-2"></i><strong>Último acesso:</strong> {{ world.last_played }}</p>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('world.world_details', world=world.dir_name) }}" class="btn btn-primary">
+                                <i class="fas fa-magnifying-glass me-1"></i>Ver detalhes
+                            </a>
+                            {% if not world.is_active and server_status.status != "error" %}
+                                <form action="{{ url_for('world.activate_world', world=world.dir_name) }}" method="post">
+                                    <button type="submit" class="btn btn-success w-100">
+                                        <i class="fas fa-play me-1"></i>Ativar mundo
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="alert alert-warning">
+        <i class="fas fa-triangle-exclamation me-2"></i>Nenhum mundo encontrado no diretório configurado.
+    </div>
+{% endif %}
+{% endblock %}
