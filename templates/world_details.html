@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Detalhes do Mundo - {{ world.name }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .detail-card {
+            margin-bottom: 20px;
+        }
+        .server-status {
+            font-size: 0.85rem;
+        }
+        .server-status i {
+            font-size: 1.2rem;
+        }
+        .server-running {
+            color: #28a745;
+        }
+        .server-stopped {
+            color: #dc3545;
+        }
+        .server-error {
+            color: #ffc107;
+        }
+        .map-container {
+            position: relative;
+            border: 2px solid #666;
+            background-color: #f0f0f0;
+            padding: 10px;
+            margin-top: 20px;
+        }
+        .map-point {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: red;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .map-point.spawn {
+            background-color: green;
+            width: 12px;
+            height: 12px;
+        }
+        .map-region {
+            position: absolute;
+            background-color: rgba(0, 0, 255, 0.2);
+            border: 1px solid blue;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <a href="{{ url_for('index') }}" class="btn btn-secondary mb-2">
+                    <i class="fas fa-arrow-left me-1"></i>Voltar
+                </a>
+                <h1 class="mt-2">{{ world.display_name|default(world.name) }}</h1>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Coluna da esquerda -->
+            <div class="col-md-6">
+                <!-- Informações gerais -->
+                <div class="card detail-card">
+                    <div class="card-header">
+                        <h4 class="mb-0"><i class="fas fa-info-circle me-2"></i>Informações gerais</h4>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-tag me-2"></i>Nome do mundo:</span>
+                                <span>{{ world.name }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-code-branch me-2"></i>Seed:</span>
+				<span><a href="https://mcseedmap.net/{{ world.version }}-Java/{{ world.seed }}">{{ world.seed }}</a></span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-cubes me-2"></i>Modo de jogo:</span>
+                                <span>{{ world.game_mode }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-radiation me-2"></i>Dificuldade:</span>
+                                <span>{{ world.difficulty }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-code-branch me-2"></i>Versão:</span>
+                                <span>{{ world.version }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-terminal me-2"></i>Utiliza mods:</span>
+                                <span class="badge {% if world.was_modded %}bg-success{% else %}bg-light text-dark{% endif %}">
+                                    {{ 'Sim' if world.was_modded else 'Não' }}
+                                </span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-terminal me-2"></i>Comandos permitidos:</span>
+                                <span class="badge {% if world.allow_commands %}bg-success{% else %}bg-light text-dark{% endif %}">
+                                    {{ 'Sim' if world.allow_commands else 'Não' }}
+                                </span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+
+                <!-- Estrutura do mundo -->
+                <div class="card detail-card">
+                    <div class="card-header">
+                        <h4 class="mb-0"><i class="fas fa-folder-tree me-2"></i>Estrutura do mundo</h4>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-hard-drive me-2"></i>Tamanho total:</span>
+                                <span>{{ world.file_stats.size_mb }} MB</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-file me-2"></i>Número de arquivos:</span>
+                                <span>{{ world.file_stats.file_count }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-file-alt me-2"></i>level.dat:</span>
+                                <span>
+                                    {% if world.structure.has_level_dat %}
+                                        <i class="fas fa-check-circle text-success"></i>
+                                    {% else %}
+                                        <i class="fas fa-times-circle text-danger"></i>
+                                    {% endif %}
+                                </span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-folder me-2"></i>Pasta region:</span>
+                                <span>
+                                    {% if world.structure.has_region_folder %}
+                                        <i class="fas fa-check-circle text-success"></i>
+                                    {% else %}
+                                        <i class="fas fa-times-circle text-danger"></i>
+                                    {% endif %}
+                                </span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-folder me-2"></i>Pasta playerdata:</span>
+                                <span>
+                                    {% if world.structure.has_player_data %}
+                                        <i class="fas fa-check-circle text-success"></i>
+                                    {% else %}
+                                        <i class="fas fa-times-circle text-danger"></i>
+                                    {% endif %}
+                                </span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-folder me-2"></i>Pasta data:</span>
+                                <span>
+                                    {% if world.structure.has_data_folder %}
+                                        <i class="fas fa-check-circle text-success"></i>
+                                    {% else %}
+                                        <i class="fas fa-times-circle text-danger"></i>
+                                    {% endif %}
+                                </span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
+
+
+            <!-- Coluna da direita -->
+            <div class="col-md-6">
+                <!-- Estatísticas -->
+                <div class="card detail-card">
+                    <div class="card-header">
+                        <h4 class="mb-0"><i class="fas fa-chart-line me-2"></i>Estatísticas</h4>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-calendar-alt me-2"></i>Tempo jogado:</span>
+                                <span>{{ world.played_time }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-calendar me-2"></i>Dias passados no jogo:</span>
+                                <span>{{ world.ingame_current_day }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-calendar-alt me-2"></i>Última partida:</span>
+                                <span>{{ world.last_played }}</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <!-- Jogadores -->
+                <div class="card detail-card">
+                    <div class="card-header">
+                        <h4 class="mb-0"><i class="fas fa-users me-2"></i>Jogadores</h4>
+                    </div>
+                    <div class="card-body">
+                        <p>
+                            <i class="fas fa-user-group me-2"></i>Número de jogadores:
+                            <span class="badge bg-primary">{{ world.players.count | default(0) }}</span>
+                        </p>
+                        {% if world.players.count > 0 %}
+                            <div class="mt-3">
+                                <h6>UUIDs dos jogadores:</h6>
+                                <div class="bg-light p-2 rounded" style="max-height: 150px; overflow-y: auto;">
+                                    {% for uuid in world.players.uuids %}
+                                        <code class="d-block mb-1">{{ uuid }}</code>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Spawn e Coordenadas -->
+                <div class="card detail-card">
+                    <div class="card-header">
+                        <h4 class="mb-0"><i class="fas fa-map-marker-alt me-2"></i>Ponto de Spawn</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-around mb-3">
+                            <div class="text-center">
+                                <span class="d-block"><i class="fas fa-arrows-left-right text-primary"></i> X</span>
+                                <span class="fs-4 fw-bold">{{ world.spawn_x|default('?') }}</span>
+                            </div>
+                            <div class="text-center">
+                                <span class="d-block"><i class="fas fa-arrows-up-down text-success"></i> Y</span>
+                                <span class="fs-4 fw-bold">{{ world.spawn_y|default('?') }}</span>
+                            </div>
+                            <div class="text-center">
+                                <span class="d-block"><i class="fas fa-arrows-left-right-to-line text-danger"></i> Z</span>
+                                <span class="fs-4 fw-bold">{{ world.spawn_z|default('?') }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Regiões e Chunks -->
+                <div class="card detail-card">
+                    <div class="card-header">
+                        <h4 class="mb-0"><i class="fas fa-globe me-2"></i>Regiões e Chunks</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-3">
+                            <div>
+                                <p class="mb-1">
+                                    <i class="fas fa-puzzle-piece me-2"></i>Regiões:
+                                    <span class="badge bg-secondary">{{ world.regions.count }}</span>
+                                </p>
+                                <p class="mb-1">
+                                    <i class="fas fa-th me-2"></i>Chunks estimados:
+                                    <span class="badge bg-info text-dark">{{ world.regions.total_chunks }}</span>
+                                </p>
+                            </div>
+                            <div>
+                                <p class="mb-1">
+                                    <i class="fas fa-expand me-2"></i>Tamanho estimado:
+                                    <span class="badge bg-dark">
+                                        {{ world.regions.estimated_world_size_blocks }} blocos
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+
+                        {% if world.regions.count > 0 %}
+                            <div class="map-container" style="height: 300px; width: 100%;">
+                                <div style="position: absolute; top: 5px; left: 5px; z-index: 100; background: rgba(255,255,255,0.8); padding: 5px; border-radius: 3px;">
+                                    <small>
+                                        <i class="fas fa-circle text-success me-1"></i>Spawn
+                                        <i class="fas fa-square text-primary ms-3 me-1"></i>Regiões
+                                    </small>
+                                </div>
+
+                                <!-- Ponto de spawn -->
+                                {% if world.spawn_x is defined and world.spawn_z is defined %}
+                                    <div class="map-point spawn" style="left: 50%; top: 50%;" title="Spawn ({{ world.spawn_x }}, {{ world.spawn_z }})"></div>
+                                {% endif %}
+
+                                <!-- Regiões (simplificado - apenas uma representação visual) -->
+                                {% for region in world.regions.data %}
+                                    <div class="map-region" style="left: {{ 50 + region.x * 5 }}%; top: {{ 50 + region.z * 5 }}%; width: 20px; height: 20px;" title="Região {{ region.file }} ({{ region.x }}, {{ region.z }})"></div>
+                                {% endfor %}
+                            </div>
+
+                            {% if world.regions.count > 5 %}
+                                <div class="mt-3">
+                                    <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#regionsList">
+                                        Mostrar todas as {{ world.regions.count }} regiões
+                                    </button>
+                                    <div class="collapse mt-2" id="regionsList">
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Arquivo</th>
+                                                        <th>Coordenadas</th>
+                                                        <th>Tamanho</th>
+                                                        <th>Chunks</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for region in world.regions.data %}
+                                                        <tr>
+                                                            <td><code>{{ region.file }}</code></td>
+                                                            <td>({{ region.x }}, {{ region.z }})</td>
+                                                            <td>{{ region.size_mb }} MB</td>
+                                                            <td>{{ region.estimated_chunks }}</td>
+                                                        </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
