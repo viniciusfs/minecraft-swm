@@ -1,21 +1,29 @@
 import os
-import yaml
 import json
 import subprocess
+import yaml
+
 from flask import current_app
 
 
+class DoubleQuoteDumper(yaml.Dumper):
+    def represent_str(self, data):
+        return self.represent_scalar('tag:yaml.org,2002:str', data, style='"')
+
+
+DoubleQuoteDumper.add_representer(str, DoubleQuoteDumper.represent_str)
+
+
 def get_active_world():
-    """Gets the active world from docker-compose.yml"""
     try:
         docker_compose_file = current_app.config['DOCKER_COMPOSE_FILE']
         container_name = current_app.config['CONTAINER_NAME']
 
         with open(docker_compose_file, 'r') as file:
             compose_data = yaml.safe_load(file)
-
             env = compose_data['services'][container_name]['environment']
             if 'LEVEL' in env.keys():
+                print(env.get('LEVEL'))
                 return env.get('LEVEL')
 
     except Exception as e:
@@ -24,11 +32,12 @@ def get_active_world():
     return None
 
 
-def update_docker_compose(world_name):
-    """Updates the docker-compose.yml file with the new world"""
+def update_docker_compose(name):
     try:
         docker_compose_file = current_app.config['DOCKER_COMPOSE_FILE']
         container_name = current_app.config['CONTAINER_NAME']
+        prefix = os.path.basename(current_app.config['WORLDS_DIR'])
+        world_name = prefix + "/" + name
 
         with open(docker_compose_file, 'r') as file:
             compose_data = yaml.safe_load(file)
@@ -41,7 +50,7 @@ def update_docker_compose(world_name):
             compose_data['services'][container_name]['environment'] = merged_env
 
         with open(docker_compose_file, 'w') as file:
-            yaml.dump(compose_data, file, sort_keys=False)
+            yaml.dump(compose_data, file, sort_keys=False, Dumper=DoubleQuoteDumper)
 
         return True
 
@@ -51,14 +60,13 @@ def update_docker_compose(world_name):
 
 
 def stop_server():
-    """Stops the Minecraft server container"""
     try:
         docker_compose_file = current_app.config['DOCKER_COMPOSE_FILE']
         container_name = current_app.config['CONTAINER_NAME']
 
         compose_dir = os.path.dirname(docker_compose_file)
         os.chdir(compose_dir)
-        subprocess.run(["docker-compose", "stop", container_name], check=True)
+        subprocess.run(["docker", "compose", "stop", container_name], check=True)
 
         return True
 
@@ -68,14 +76,13 @@ def stop_server():
 
 
 def start_server():
-    """Starts the Minecraft server container"""
     try:
         docker_compose_file = current_app.config['DOCKER_COMPOSE_FILE']
         container_name = current_app.config['CONTAINER_NAME']
 
         compose_dir = os.path.dirname(docker_compose_file)
         os.chdir(compose_dir)
-        subprocess.run(["docker-compose", "up", "-d", container_name], check=True)
+        subprocess.run(["docker", "compose", "up", "-d", container_name], check=True)
 
         return True
 
@@ -85,7 +92,6 @@ def start_server():
 
 
 def get_server_status():
-    """Gets the server status and stats"""
     try:
         docker_compose_file = current_app.config['DOCKER_COMPOSE_FILE']
         container_name = current_app.config['CONTAINER_NAME']
@@ -94,7 +100,7 @@ def get_server_status():
         os.chdir(compose_dir)
 
         result = subprocess.run(
-            ["docker-compose", "ps", "-q", container_name],
+            ["docker", "compose", "ps", "-q", container_name],
             check=True,
             capture_output=True,
             text=True

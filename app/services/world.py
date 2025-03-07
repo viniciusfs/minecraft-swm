@@ -1,11 +1,13 @@
 import os
 import time
+import nbt.nbt as nbt
+
 from datetime import datetime, timedelta
 from flask import current_app
-import nbt.nbt as nbt
-from app.services.docker_service import get_active_world
 
-# Constants for mapping game data
+from app.services.compose import get_active_world
+
+
 GAME_MODES = {
     0: "Survival",
     1: "Creative",
@@ -22,7 +24,6 @@ DIFFICULTIES = {
 
 
 def get_world_list():
-    """Gets a list of all worlds in the worlds directory"""
     worlds_dir = current_app.config['WORLDS_DIR']
 
     if not os.path.exists(worlds_dir):
@@ -38,13 +39,14 @@ def get_world_list():
 
 
 def get_world_details(world_name):
-    """Gets detailed information about a specific world"""
     worlds_dir = current_app.config['WORLDS_DIR']
+    worlds_dir_prefix = os.path.basename(worlds_dir)
+
     active_world = get_active_world()
 
     world_details = {
         "dir_name": world_name,
-        "is_active": world_name == active_world
+        "is_active": worlds_dir_prefix + "/" + world_name == active_world
     }
 
     world_path = os.path.join(worlds_dir, world_name)
@@ -55,7 +57,6 @@ def get_world_details(world_name):
     has_player_data = os.path.exists(os.path.join(world_path, "playerdata"))
     has_data_folder = os.path.exists(os.path.join(world_path, "data"))
 
-    # Structure info
     world_details["structure"] = {
         "has_level_dat": has_level_dat,
         "has_region_folder": has_region_folder,
@@ -63,7 +64,6 @@ def get_world_details(world_name):
         "has_data_folder": has_data_folder,
     }
 
-    # Get level info
     if has_level_dat:
         nbt_file = nbt.NBTFile(level_dat_path, 'rb')
         data = nbt_file["Data"]
@@ -117,7 +117,6 @@ def get_world_details(world_name):
             "spawn_z": nbt_data["spawn_z"],
         })
 
-    # Get players info
     if has_player_data:
         uuids = []
         player_data_dir = os.path.join(world_path, "playerdata")
@@ -136,7 +135,6 @@ def get_world_details(world_name):
             "uuids": []
         }
 
-    # Get file stats
     total_size = 0
     file_count = 0
     for dirpath, dirnames, filenames in os.walk(world_path):
@@ -155,7 +153,6 @@ def get_world_details(world_name):
         "creation_time": time.ctime(creation_time),
     }
 
-    # Get region data
     regions = []
     total_chunks = 0
     if has_region_folder:
